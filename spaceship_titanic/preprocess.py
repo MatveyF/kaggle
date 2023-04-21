@@ -2,6 +2,8 @@
 import pandas as pd
 import numpy as np
 
+from sklearn.preprocessing import LabelEncoder
+
 
 def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
 
@@ -14,8 +16,10 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def _clean_features(df: pd.DataFrame) -> pd.DataFrame:
     # one hot encode
-    df = pd.get_dummies(data=df, columns=["HomePlanet"])
-    df = pd.get_dummies(data=df, columns=["Destination"])
+    encoder = LabelEncoder()
+
+    df["HomePlanet"] = encoder.fit_transform(df["HomePlanet"])
+    df["Destination"] = encoder.fit_transform(df["Destination"])
 
     # Fill missing values
     df["Age"] = df["Age"].fillna(df["Age"].mean())
@@ -53,7 +57,8 @@ def _extract_features(df: pd.DataFrame) -> pd.DataFrame:
     # df = df[df["cabin_num"].isnull() == False]  # drop rows with no cabin information ?
 
     # encode the cabin information
-    df = pd.get_dummies(data=df, columns=["cabin_deck"])
+    encoder = LabelEncoder()
+    df["cabin_deck"] = encoder.fit_transform(df["cabin_deck"])
 
     df["cabin_side"] = df["cabin_side"].apply(lambda x: None if x is np.nan else x == "P")
 

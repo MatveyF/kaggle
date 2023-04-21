@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import StratifiedKFold
+from catboost import CatBoostClassifier
 
 from preprocess import preprocess_data
 
@@ -15,22 +17,21 @@ def main(input_path: Path):
     train = preprocess_data(orig_train)
     test = preprocess_data(orig_test)
 
-    from catboost import CatBoostClassifier
-
     y_train = train["Transported"]
     X_train = train.drop(columns=["Transported"])
 
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
     param_grid = {
         'learning_rate': [0.01, 0.1, 0.2],
-        'iterations': [500, 1000],
-        'depth': [4, 6, 8],
-        'l2_leaf_reg': [1, 3, 5],
+        'depth': [5, 7],
+        'l2_leaf_reg': [3, 5],
     }
 
-    model = CatBoostClassifier()
+    model = CatBoostClassifier(iterations=1500)
 
     # Perform Grid Search
-    grid_search = GridSearchCV(model, param_grid, cv=4, n_jobs=-1, verbose=3)
+    grid_search = GridSearchCV(model, param_grid, cv=skf, n_jobs=-1, verbose=3)
     grid_search.fit(X_train, y_train)
 
     # Get the best parameters
