@@ -1,7 +1,4 @@
 # Imports
-import argparse
-from pathlib import Path
-
 import pandas as pd
 import numpy as np
 
@@ -61,39 +58,3 @@ def _extract_features(df: pd.DataFrame) -> pd.DataFrame:
     df["cabin_side"] = df["cabin_side"].apply(lambda x: None if x is np.nan else x == "P")
 
     return df
-
-
-def main(input_path: Path, output_path: Path):
-    orig_train = pd.read_csv(input_path / "train.csv")
-    orig_test = pd.read_csv(input_path / "test.csv")
-
-    train = preprocess_data(orig_train)
-    test = preprocess_data(orig_test)
-
-    from catboost import CatBoostClassifier
-
-    y = train["Transported"]
-    X = train.drop(columns=["Transported"])
-
-    model = CatBoostClassifier()
-    model.fit(X, y)
-
-    y_pred = model.predict(test)
-
-    result = pd.DataFrame({"PassengerId": orig_test["PassengerId"], "Transported": y_pred})
-
-    # result["Transported"] = result["Transported"].apply(lambda x: x in [1, True])
-
-    result.to_csv("submission.csv", index=False)
-
-    # to try:
-    #  1. cross validation
-    #  2. model tuning
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', type=str, required=True)
-    parser.add_argument('-o', type=str, required=True)
-    args = parser.parse_args()
-
-    main(Path(args.i), Path(args.o))
