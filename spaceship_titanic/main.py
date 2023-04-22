@@ -3,11 +3,41 @@ import argparse
 from pathlib import Path
 
 import pandas as pd
-from sklearn.model_selection import GridSearchCV
+import numpy as np
 from sklearn.model_selection import StratifiedKFold
-from catboost import CatBoostClassifier
+from sklearn.feature_selection import VarianceThreshold
+from sklearn.metrics import mean_squared_log_error
+from catboost import CatBoostClassifier, Pool
 
 from preprocess import preprocess_data
+
+
+def train_fit_predict(X: pd.DataFrame, y: pd.Series, test_df: pd.DataFrame) -> np.ndarray:
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    err = []
+    y_pred = []
+    for train_index, test_index in skf.split(X, y):
+        X_train, X_val = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_val = y[train_index], y[test_index]
+        _train = Pool(X_train, label=y_train)
+        _valid = Pool(X_val, label=y_val)
+
+        cb = CatBoostClassifier()
+
+        cb.fit(_train, eval_set=_valid, use_best_model=True, verbose_eval=100)
+
+        p = cb.predict(X_val)
+        print("err: ", mean_squared_log_error(y_val, [i == "True" for i in p]))
+        err.append(mean_squared_log_error(y_val, [i == "True" for i in p]))
+        pred = cb.predict(test_df)
+        y_pred.append(pred)
+
+    new_y_pred = np.ndarray(shape=(5, 4277))
+    for i, arr in enumerate(y_pred):
+        new_y_pred[i] = [j == "True" for j in arr]
+
+    return np.mean(new_y_pred, 0)
 
 
 def main(input_path: Path):
@@ -17,31 +47,17 @@ def main(input_path: Path):
     train = preprocess_data(orig_train)
     test = preprocess_data(orig_test)
 
+    # selector = VarianceThreshold()
+    # print(f"orig shape: {train.shape}")
+    # new_X = selector.fit_transform(train)
+    # print(f"selected shape: {new_X.shape}")
+
     y_train = train["Transported"]
     X_train = train.drop(columns=["Transported"])
 
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    y_pred = train_fit_predict(X_train, y_train, test)
 
-    param_grid = {
-        'learning_rate': [0.01, 0.1, 0.2],
-        'depth': [5, 7],
-        'l2_leaf_reg': [3, 5],
-    }
-
-    model = CatBoostClassifier(iterations=1500)
-
-    # Perform Grid Search
-    grid_search = GridSearchCV(model, param_grid, cv=skf, n_jobs=-1, verbose=3)
-    grid_search.fit(X_train, y_train)
-
-    # Get the best parameters
-    best_params = grid_search.best_params_
-
-    # Train your final model with the best parameters
-    final_model = CatBoostClassifier(**best_params)
-    final_model.fit(X_train, y_train)
-
-    y_pred = final_model.predict(test)
+    y_pred = [i >= 0.5 for i in y_pred]
 
     result = pd.DataFrame({"PassengerId": orig_test["PassengerId"], "Transported": y_pred})
 
