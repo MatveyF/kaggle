@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 from sklearn.preprocessing import LabelEncoder
+from sklearn.impute import KNNImputer
 
 
 def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -11,40 +12,26 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     df = _drop_features(df)
     df = _clean_features(df)
 
-    return df
+    return pd.get_dummies(df)
 
 
 def _clean_features(df: pd.DataFrame) -> pd.DataFrame:
-    # one hot encode
-    encoder = LabelEncoder()
-
-    df["HomePlanet"] = encoder.fit_transform(df["HomePlanet"])
-    df["Destination"] = encoder.fit_transform(df["Destination"])
-
     # Fill missing values
-    df["Age"] = df["Age"].fillna(df["Age"].mean())
+    imputer = KNNImputer()
 
-    df["RoomService"] = df["RoomService"].fillna(df["RoomService"].median())
-    df["FoodCourt"] = df["FoodCourt"].fillna(df["FoodCourt"].median())
-    df["ShoppingMall"] = df["ShoppingMall"].fillna(df["ShoppingMall"].median())
-    df["Spa"] = df["Spa"].fillna(df["Spa"].median())
-    df["VRDeck"] = df["VRDeck"].fillna(df["VRDeck"].median())
+    for colname in [
+        "Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "VIP", "CryoSleep", "cabin_side"
+    ]:
+        df[colname] = imputer.fit_transform(df[colname].to_numpy().reshape(-1, 1))
 
     df["AmountBilled"] = df[["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"]].sum(axis=1)
-    df.drop(columns=["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"], inplace=True)
-
-    df["VIP"] = df["VIP"].fillna(False)
-    df["CryoSleep"] = df["CryoSleep"].fillna(False)
-
-    df.drop(columns=["cabin_num"], inplace=True)
-
-    df["cabin_side"] = df["cabin_side"].fillna(True)
+    df.drop(columns=["FoodCourt", "ShoppingMall", "cabin_num"], inplace=True)
 
     return df
 
 
 def _drop_features(df: pd.DataFrame) -> pd.DataFrame:
-    return df.drop(columns=["Name", "Cabin", "PassengerId"])
+    return df.drop(columns=["Name", "Cabin", "PassengerId", "HomePlanet", "Destination"])
 
 
 def _extract_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -53,8 +40,6 @@ def _extract_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # expand the cabin information
     df[['cabin_deck', 'cabin_num', 'cabin_side']] = df["Cabin"].str.split("/", expand=True)
-
-    # df = df[df["cabin_num"].isnull() == False]  # drop rows with no cabin information ?
 
     # encode the cabin information
     encoder = LabelEncoder()
