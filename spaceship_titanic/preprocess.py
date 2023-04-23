@@ -12,7 +12,7 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     df = _drop_features(df)
     df = _clean_features(df)
 
-    return pd.get_dummies(df)
+    return df
 
 
 def _clean_features(df: pd.DataFrame) -> pd.DataFrame:

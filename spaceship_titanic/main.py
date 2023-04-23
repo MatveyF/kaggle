@@ -12,8 +12,8 @@ from preprocess import preprocess_data
 
 
 def train_fit_predict(X: pd.DataFrame, y: pd.Series, test_df: pd.DataFrame) -> np.ndarray:
-    model = CatBoostClassifier()
-    model.fit(X, y)
+    model = CatBoostClassifier(iterations=2000, task_type="GPU")
+    model.fit(X, y, verbose_eval=100)
 
     return model.predict(test_df)
 
