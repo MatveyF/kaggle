@@ -6,45 +6,51 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
 
 
-def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
+class Preprocessor:
+    def __init__(
+        self,
+        scaler = None,
+        encoder = LabelEncoder(),
+        imputer = KNNImputer(),
+    ):
+        self.scaler = scaler
+        self.encoder = encoder
+        self.imputer = imputer
 
-    df = _extract_features(df)
-    df = _drop_features(df)
-    df = _clean_features(df)
+    def preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        # extract group information (and cast to int)
+        df["PassengerGroup"] = df["PassengerId"].str.split("_").str[0].apply(lambda x: int(x))
 
-    return df
+        # expand the cabin information
+        df[["cabin_deck", "cabin_num", "cabin_side"]] = df["Cabin"].str.split("/", expand=True)
 
+        # assume cabin_side missing values are "P"
+        df["cabin_side"] = df["cabin_side"].apply(lambda x: None if x is np.nan else x == "P")
 
-def _clean_features(df: pd.DataFrame) -> pd.DataFrame:
-    # Fill missing values
-    imputer = KNNImputer()
+        # assume vip missing values are False
+        df["VIP"] = df["VIP"].fillna(False)
 
-    for colname in [
-        "Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "VIP", "CryoSleep", "cabin_side"
-    ]:
-        df[colname] = imputer.fit_transform(df[colname].to_numpy().reshape(-1, 1))
+        # encode the cabin information
+        for col_name in ["cabin_deck", "cabin_side"]:
+            df[col_name] = self.encoder.fit_transform(df[col_name])
 
-    df["AmountBilled"] = df[["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"]].sum(axis=1)
-    df.drop(columns=["FoodCourt", "ShoppingMall", "cabin_num"], inplace=True)
+        for col_name in [
+            "Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "CryoSleep"
+        ]:
+            df[col_name] = self.imputer.fit_transform(df[col_name].to_numpy().reshape(-1, 1))
 
-    return df
+        df["AmountBilled"] = df[["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"]].sum(axis=1)
 
+        df.drop(
+            columns=[
+                "Name", "Cabin", "PassengerId", "HomePlanet", "Destination", "FoodCourt", "ShoppingMall", "cabin_num"
+            ],
+            inplace=True
+        )
 
-def _drop_features(df: pd.DataFrame) -> pd.DataFrame:
-    return df.drop(columns=["Name", "Cabin", "PassengerId", "HomePlanet", "Destination"])
+        # If a scaler is provided, scale the numerical features
+        if self.scaler is not None:
+            numerical_features = ["Age", "RoomService", "Spa", "VRDeck", "AmountBilled"]
+            df[numerical_features] = self.scaler.fit_transform(df[numerical_features])
 
-
-def _extract_features(df: pd.DataFrame) -> pd.DataFrame:
-    # extract group information (and covert to int)
-    df["PassengerGroup"] = df["PassengerId"].str.split("_").str[0].apply(lambda x: int(x))
-
-    # expand the cabin information
-    df[['cabin_deck', 'cabin_num', 'cabin_side']] = df["Cabin"].str.split("/", expand=True)
-
-    # encode the cabin information
-    encoder = LabelEncoder()
-    df["cabin_deck"] = encoder.fit_transform(df["cabin_deck"])
-
-    df["cabin_side"] = df["cabin_side"].apply(lambda x: None if x is np.nan else x == "P")
-
-    return df
+        return df
