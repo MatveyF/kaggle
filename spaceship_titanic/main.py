@@ -4,13 +4,12 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
-from sklearn.feature_selection import VarianceThreshold
-from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
-from catboost import CatBoostClassifier, Pool
+from catboost import CatBoostClassifier
 
 from preprocess import Preprocessor
+from data_loading import CSVDataLoader, DataLoader
 
 
 def train_fit_predict(X: pd.DataFrame, y: pd.Series, test_df: pd.DataFrame) -> np.ndarray:
@@ -21,17 +20,18 @@ def train_fit_predict(X: pd.DataFrame, y: pd.Series, test_df: pd.DataFrame) -> n
 
 
 def main(input_path: Path):
-    orig_train = pd.read_csv(input_path / "train.csv")
-    orig_test = pd.read_csv(input_path / "test.csv")
 
-    test_passenger_ids = orig_test["PassengerId"].copy()  # Store PassengerId before preprocessing
+    loader = CSVDataLoader(input_path)
+    train, test = loader.load_data()
+
+    test_passenger_ids = test["PassengerId"].copy()  # Store PassengerId before preprocessing
 
     preprocessor = Preprocessor(
         encoder=LabelEncoder(), imputer=KNNImputer(n_neighbors=5)
     )
 
-    train = preprocessor.preprocess_data(orig_train)
-    test = preprocessor.preprocess_data(orig_test)
+    train = preprocessor.preprocess_data(train)
+    test = preprocessor.preprocess_data(test)
 
     y_train = train["Transported"]
     X_train = train.drop(columns=["Transported"])
