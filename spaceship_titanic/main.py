@@ -1,6 +1,7 @@
 # Imports
 import argparse
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import numpy as np
@@ -12,37 +13,53 @@ from preprocess import Preprocessor
 from data_loading import CSVDataLoader, DataLoader
 
 
-def train_fit_predict(X: pd.DataFrame, y: pd.Series, test_df: pd.DataFrame) -> np.ndarray:
-    model = CatBoostClassifier(iterations=2000, task_type="GPU")
-    model.fit(X, y, verbose_eval=100)
+class Pipeline:
+    def __init__(self, preprocessor: Preprocessor, loader: DataLoader, predictor: Any = None):
+        self.preprocessor = preprocessor
+        self.loader = loader
 
-    return model.predict(test_df)
+        if predictor is None:
+            self.predictor = CatBoostClassifier(iterations=2000, task_type="GPU")
+        else:
+            self.predictor = predictor
+
+    def run(self):
+        train, test = self.loader.load_data()
+
+        test_passenger_ids = test["PassengerId"].copy()
+
+        train = self.preprocessor.preprocess_data(train)
+        test = self.preprocessor.preprocess_data(test)
+
+        y_train = train["Transported"]
+        X_train = train.drop(columns=["Transported"])
+
+        self.predictor.fit(X_train, y_train, verbose_eval=100)
+        y_pred = self.predictor.predict(test)
+
+        result = self._process_output(test_passenger_ids, y_pred)
+
+        result.to_csv("submission.csv", index=False)
+
+    @staticmethod
+    def _process_output(passenger_ids: pd.Series, predictions: pd.Series) -> pd.DataFrame:
+        if predictions.isin([0, 1]).all():
+            return pd.DataFrame({"PassengerId": passenger_ids, "Transported": predictions})
+
+        return pd.DataFrame({"PassengerId": passenger_ids, "Transported": predictions.astype(int)})
 
 
 def main(input_path: Path):
 
-    loader = CSVDataLoader(input_path)
-    train, test = loader.load_data()
-
-    test_passenger_ids = test["PassengerId"].copy()  # Store PassengerId before preprocessing
-
-    preprocessor = Preprocessor(
-        encoder=LabelEncoder(), imputer=KNNImputer(n_neighbors=5)
+    pipeline = Pipeline(
+        preprocessor=Preprocessor(
+            encoder=LabelEncoder(), imputer=KNNImputer(n_neighbors=5)
+        ),
+        loader=CSVDataLoader(input_path),
+        predictor=CatBoostClassifier(iterations=2000, task_type="GPU")
     )
 
-    train = preprocessor.preprocess_data(train)
-    test = preprocessor.preprocess_data(test)
-
-    y_train = train["Transported"]
-    X_train = train.drop(columns=["Transported"])
-
-    y_pred = train_fit_predict(X_train, y_train, test)
-
-    result = pd.DataFrame({"PassengerId": test_passenger_ids, "Transported": y_pred})
-
-    # result["Transported"] = result["Transported"].apply(lambda x: x in [1, True])
-
-    result.to_csv("submission.csv", index=False)
+    pipeline.run()
 
 
 if __name__ == '__main__':

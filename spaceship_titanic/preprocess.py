@@ -24,8 +24,8 @@ class Preprocessor:
         # expand the cabin information
         df[["cabin_deck", "cabin_num", "cabin_side"]] = df["Cabin"].str.split("/", expand=True)
 
-        # assume cabin_side missing values are "P"
-        df["cabin_side"] = df["cabin_side"].apply(lambda x: None if x is np.nan else x == "P")
+        # assume cabin_side missing values are "Port"
+        df["cabin_side"] = df["cabin_side"].fillna("P")
 
         # assume vip missing values are False
         df["VIP"] = df["VIP"].fillna(False)
