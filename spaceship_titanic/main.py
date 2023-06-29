@@ -1,51 +1,111 @@
 # Imports
 import argparse
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
-import numpy as np
-from sklearn.feature_selection import VarianceThreshold
-from sklearn.metrics import accuracy_score, confusion_matrix
-from catboost import CatBoostClassifier, Pool
+from sklearn.preprocessing import LabelEncoder
+from sklearn.impute import KNNImputer
+from sklearn.linear_model import LogisticRegression
+from catboost import CatBoostClassifier
 
-from preprocess import preprocess_data
-
-
-def train_fit_predict(X: pd.DataFrame, y: pd.Series, test_df: pd.DataFrame) -> np.ndarray:
-    model = CatBoostClassifier(iterations=2000, task_type="GPU")
-    model.fit(X, y, verbose_eval=100)
-
-    return model.predict(test_df)
+from preprocess import Preprocessor
+from data_loading import CSVDataLoader, DataLoader
 
 
-def main(input_path: Path):
-    orig_train = pd.read_csv(input_path / "train.csv")
-    orig_test = pd.read_csv(input_path / "test.csv")
+SUBMISSION_FILE = "submission.csv"
 
-    train = preprocess_data(orig_train)
-    test = preprocess_data(orig_test)
 
-    # selector = VarianceThreshold()
-    # print(f"orig shape: {train.shape}")
-    # new_X = selector.fit_transform(train)
-    # print(f"selected shape: {new_X.shape}")
+class Pipeline:
+    """ Pipeline class to train and predict on the data.
 
-    y_train = train["Transported"]
-    X_train = train.drop(columns=["Transported"])
+    Args:
+        preprocessor:
+            The preprocessor to use to transform the data.
+        loader:
+            The data loader to use to load the data.
+        predictor:
+            The model to train and to make predictions.
+        output_path:
+            The path to save the predictions to.
+    """
+    def __init__(
+        self,
+        preprocessor: Preprocessor,
+        loader: DataLoader,
+        predictor: Any = None,
+        output_path: Path = Path(SUBMISSION_FILE),
+    ):
+        self.preprocessor = preprocessor
+        self.loader = loader
+        self.output_path = output_path
 
-    y_pred = train_fit_predict(X_train, y_train, test)
+        if predictor is None:
+            self.predictor = CatBoostClassifier(iterations=2000, task_type="GPU")
+        else:
+            self.predictor = predictor
 
-    result = pd.DataFrame({"PassengerId": orig_test["PassengerId"], "Transported": y_pred})
+    def run(self):
+        train, test = self.loader.load_data()
 
-    # result["Transported"] = result["Transported"].apply(lambda x: x in [1, True])
+        test_passenger_ids = test["PassengerId"].copy()
 
-    result.to_csv("submission.csv", index=False)
+        # Fit the preprocessor on the training data
+        self.preprocessor.fit(train)
+
+        # Transform both training and test data
+        train = self.preprocessor.transform(train)
+        test = self.preprocessor.transform(test)
+
+        y_train = train["Transported"]
+        X_train = train.drop(columns=["Transported"])
+
+        self.predictor.fit(X_train, y_train)
+        y_pred = self.predictor.predict(test)
+
+        result = pd.DataFrame({"PassengerId": test_passenger_ids, "Transported": y_pred})
+
+        result.to_csv(self.output_path, index=False)
+
+
+def main(input_path: Path, output_path: Path):
+    # maybe try target encoding?
+    encoders = {
+        "cabin_deck": LabelEncoder(),
+        "cabin_side": LabelEncoder(),
+    }
+
+    imputers = {
+        "Age": KNNImputer(n_neighbors=5),
+        "RoomService": KNNImputer(n_neighbors=5),
+        "FoodCourt": KNNImputer(n_neighbors=5),
+        "ShoppingMall": KNNImputer(n_neighbors=5),
+        "Spa": KNNImputer(n_neighbors=5),
+        "VRDeck": KNNImputer(n_neighbors=5),
+        "CryoSleep": KNNImputer(n_neighbors=5),
+        "AmountBilled": KNNImputer(n_neighbors=5),
+    }
+
+    features_to_drop = [
+        "PassengerId", "Name", "Cabin", "HomePlanet", "Destination", "FoodCourt", "ShoppingMall", "cabin_num"
+    ]
+
+    pipeline = Pipeline(
+        preprocessor=Preprocessor(
+            scalers=None, encoders=encoders, imputers=imputers, features_to_drop=features_to_drop
+        ),
+        loader=CSVDataLoader(input_path),
+        predictor=CatBoostClassifier(iterations=2000, task_type="GPU"),
+        output_path=output_path,
+    )
+
+    pipeline.run()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', type=str, required=True)
-    # parser.add_argument('-o', type=str, required=True)
+    parser.add_argument('-o', type=str, required=False, default=SUBMISSION_FILE)
     args = parser.parse_args()
 
-    main(Path(args.i))
+    main(Path(args.i), Path(args.o))
