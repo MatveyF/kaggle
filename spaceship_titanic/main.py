@@ -18,6 +18,18 @@ SUBMISSION_FILE = "submission.csv"
 
 
 class Pipeline:
+    """ Pipeline class to train and predict on the data.
+
+    Args:
+        preprocessor:
+            The preprocessor to use to transform the data.
+        loader:
+            The data loader to use to load the data.
+        predictor:
+            The model to train and to make predictions.
+        output_path:
+            The path to save the predictions to.
+    """
     def __init__(
         self,
         preprocessor: Preprocessor,

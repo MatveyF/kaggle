@@ -1,4 +1,6 @@
 # Imports
+from typing import Dict, Optional
+
 import pandas as pd
 import numpy as np
 
@@ -7,7 +9,26 @@ from sklearn.impute import KNNImputer
 
 
 class Preprocessor:
-    def __init__(self, scalers = None, encoders = None, imputers = None):
+    """
+    Preprocessor class to transform the data into a format that can be used by the model.
+
+    Args:
+        scalers:
+            A dictionary of scalers to use for each column. The keys should be the column names and the values should
+            be the scaler to use. If a column is not present in the dictionary, no scaling will be applied.
+        encoders:
+            A dictionary of encoders to use for each column. The keys should be the column names and the values should
+            be the encoder to use.
+        imputers:
+            A dictionary of imputers to use for each column. The keys should be the column names and the values should
+            be the imputer to use.
+    """
+    def __init__(
+        self,
+        scalers: Optional[Dict] = None,
+        encoders: Optional[Dict] = None,
+        imputers: Optional[Dict] = None
+    ):
         self.scalers = scalers if scalers is not None else {}
         self.encoders = encoders if encoders is not None else {}
         self.imputers = imputers if imputers is not None else {}
@@ -24,6 +45,11 @@ class Preprocessor:
         return df
 
     def fit(self, df: pd.DataFrame):
+        """ Fit the preprocessor on the training data.
+
+        Args:
+            df: The training data to fit the preprocessor on.
+        """
         df = self._generate_features(df)
 
         # Fit the encoder and imputer on the training data
@@ -43,6 +69,14 @@ class Preprocessor:
                 self.scalers[col_name].fit(df[[col_name]])
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """ Transform the data into a format that can be used by the model.
+
+        Args:
+            df: The data to transform.
+
+        Returns:
+            The transformed data.
+        """
         df = self._generate_features(df)
 
         # assume cabin_side missing values are "Port"
