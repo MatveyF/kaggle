@@ -28,8 +28,7 @@ class CSVDataLoader(DataLoader):
 
 class SQLDataLoader(DataLoader):
     def __init__(self, connection_string: str, train_table_name: str, test_table_name: str):
-        engine = create_engine(connection_string)
-        self.connection = engine.connect()
+        self.engine = create_engine(connection_string)
         self.train_table_name = train_table_name
         self.test_table_name = test_table_name
 
@@ -43,4 +42,5 @@ class SQLDataLoader(DataLoader):
             FROM {self.test_table_name}
         """
 
-        return pd.read_sql(query_train, self.connection), pd.read_sql(query_test, self.connection)
+        with self.engine.connect() as connection:
+            return pd.read_sql(query_train, connection), pd.read_sql(query_test, connection)
