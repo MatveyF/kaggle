@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
 from sklearn.linear_model import LogisticRegression
@@ -87,9 +86,13 @@ def main(input_path: Path, output_path: Path):
         "AmountBilled": KNNImputer(n_neighbors=5),
     }
 
+    features_to_drop = [
+        "PassengerId", "Name", "Cabin", "HomePlanet", "Destination", "FoodCourt", "ShoppingMall", "cabin_num"
+    ]
+
     pipeline = Pipeline(
         preprocessor=Preprocessor(
-            scalers=None, encoders=encoders, imputers=imputers
+            scalers=None, encoders=encoders, imputers=imputers, features_to_drop=features_to_drop
         ),
         loader=CSVDataLoader(input_path),
         predictor=CatBoostClassifier(iterations=2000, task_type="GPU"),

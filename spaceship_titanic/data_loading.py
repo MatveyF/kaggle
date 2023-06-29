@@ -11,7 +11,6 @@ class DataLoader(ABC):
 
     Note that the return type is a tuple of two pandas DataFrames. The first is
     the training data, the second is the test data.
-
     """
     @abstractmethod
     def load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
