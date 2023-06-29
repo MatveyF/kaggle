@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
+from sklearn.linear_model import LogisticRegression
 from catboost import CatBoostClassifier
 
 from preprocess import Preprocessor
@@ -38,32 +39,45 @@ class Pipeline:
 
         test_passenger_ids = test["PassengerId"].copy()
 
-        train = self.preprocessor.preprocess_data(train)
-        test = self.preprocessor.preprocess_data(test)
+        # Fit the preprocessor on the training data
+        self.preprocessor.fit(train)
+
+        # Transform both training and test data
+        train = self.preprocessor.transform(train)
+        test = self.preprocessor.transform(test)
 
         y_train = train["Transported"]
         X_train = train.drop(columns=["Transported"])
 
-        self.predictor.fit(X_train, y_train, verbose_eval=100)
+        self.predictor.fit(X_train, y_train)
         y_pred = self.predictor.predict(test)
 
-        result = self._process_output(test_passenger_ids, y_pred)
+        result = pd.DataFrame({"PassengerId": test_passenger_ids, "Transported": y_pred})
 
         result.to_csv(self.output_path, index=False)
 
-    @staticmethod
-    def _process_output(passenger_ids: pd.Series, predictions: pd.Series) -> pd.DataFrame:
-        if predictions.isin([0, 1]).all():
-            return pd.DataFrame({"PassengerId": passenger_ids, "Transported": predictions})
-
-        return pd.DataFrame({"PassengerId": passenger_ids, "Transported": predictions.astype(int)})
-
 
 def main(input_path: Path, output_path: Path):
+    # maybe try target encoding?
+    encoders = {
+        "cabin_deck": LabelEncoder(),
+        "cabin_side": LabelEncoder(),
+    }
+
+    imputers = {
+        "Age": KNNImputer(n_neighbors=5),
+        "RoomService": KNNImputer(n_neighbors=5),
+        "FoodCourt": KNNImputer(n_neighbors=5),
+        "ShoppingMall": KNNImputer(n_neighbors=5),
+        "Spa": KNNImputer(n_neighbors=5),
+        "VRDeck": KNNImputer(n_neighbors=5),
+        "CryoSleep": KNNImputer(n_neighbors=5),
+        "AmountBilled": KNNImputer(n_neighbors=5),
+    }
 
     pipeline = Pipeline(
         preprocessor=Preprocessor(
-            encoder=LabelEncoder(), imputer=KNNImputer(n_neighbors=5)
+            scalers=None, encoders=encoders, imputers=imputers
         ),
         loader=CSVDataLoader(input_path),
         predictor=CatBoostClassifier(iterations=2000, task_type="GPU"),

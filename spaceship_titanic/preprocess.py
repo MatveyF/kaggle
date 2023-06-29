@@ -7,22 +7,43 @@ from sklearn.impute import KNNImputer
 
 
 class Preprocessor:
-    def __init__(
-        self,
-        scaler = None,
-        encoder = LabelEncoder(),
-        imputer = KNNImputer(),
-    ):
-        self.scaler = scaler
-        self.encoder = encoder
-        self.imputer = imputer
+    def __init__(self, scalers = None, encoders = None, imputers = None):
+        self.scalers = scalers if scalers is not None else {}
+        self.encoders = encoders if encoders is not None else {}
+        self.imputers = imputers if imputers is not None else {}
 
-    def preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _generate_features(self, df: pd.DataFrame) -> pd.DataFrame:
         # extract group information (and cast to int)
         df["PassengerGroup"] = df["PassengerId"].str.split("_").str[0].apply(lambda x: int(x))
 
         # expand the cabin information
         df[["cabin_deck", "cabin_num", "cabin_side"]] = df["Cabin"].str.split("/", expand=True)
+
+        df["AmountBilled"] = df[["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"]].sum(axis=1)
+
+        return df
+
+    def fit(self, df: pd.DataFrame):
+        df = self._generate_features(df)
+
+        # Fit the encoder and imputer on the training data
+        for col_name in ["cabin_deck", "cabin_side"]:
+            if col_name not in self.encoders:
+                self.encoders[col_name] = LabelEncoder()
+            self.encoders[col_name].fit(df[col_name])
+
+        for col_name in ["Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "CryoSleep",
+                         "AmountBilled"]:
+            if col_name not in self.imputers:
+                self.imputers[col_name] = KNNImputer(n_neighbors=5)
+            self.imputers[col_name].fit(df[[col_name]])
+
+        for col_name in ["Age", "RoomService", "Spa", "VRDeck", "AmountBilled"]:
+            if col_name in self.scalers:
+                self.scalers[col_name].fit(df[[col_name]])
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = self._generate_features(df)
 
         # assume cabin_side missing values are "Port"
         df["cabin_side"] = df["cabin_side"].fillna("P")
@@ -32,14 +53,12 @@ class Preprocessor:
 
         # encode the cabin information
         for col_name in ["cabin_deck", "cabin_side"]:
-            df[col_name] = self.encoder.fit_transform(df[col_name])
+            df[col_name] = self.encoders[col_name].transform(df[col_name])
 
         for col_name in [
-            "Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "CryoSleep"
+            "Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "CryoSleep", "AmountBilled"
         ]:
-            df[col_name] = self.imputer.fit_transform(df[col_name].to_numpy().reshape(-1, 1))
-
-        df["AmountBilled"] = df[["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"]].sum(axis=1)
+            df[col_name] = self.imputers[col_name].transform(df[col_name].to_numpy().reshape(-1, 1))
 
         df.drop(
             columns=[
@@ -49,8 +68,8 @@ class Preprocessor:
         )
 
         # If a scaler is provided, scale the numerical features
-        if self.scaler is not None:
-            numerical_features = ["Age", "RoomService", "Spa", "VRDeck", "AmountBilled"]
-            df[numerical_features] = self.scaler.fit_transform(df[numerical_features])
+        for col_name in ["Age", "RoomService", "Spa", "VRDeck", "AmountBilled"]:
+            if col_name in self.scalers:
+                df[col_name] = self.scalers[col_name].transform(df[[col_name]])
 
         return df
