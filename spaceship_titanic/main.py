@@ -95,7 +95,16 @@ def main(input_path: Path, output_path: Path):
             scalers=None, encoders=encoders, imputers=imputers, features_to_drop=features_to_drop
         ),
         loader=CSVDataLoader(input_path),
-        predictor=CatBoostClassifier(iterations=2000, task_type="GPU"),
+        predictor=CatBoostClassifier(
+            iterations=1993,
+            depth=10,
+            learning_rate=0.09982799280243655,
+            random_strength=1,
+            bagging_temperature=0.45672029947151016,
+            od_type="Iter",
+            od_wait=11,
+            task_type="GPU",
+        ),
         output_path=output_path,
     )
 
