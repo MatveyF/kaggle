@@ -1,21 +1,18 @@
 # In this file I will implement a simple movie recommender system using the demographic filtering technique
 import pandas as pd
 
+from data_loader import DataLoader
+
 
 class SimpleRecommender:
-    def __init__(self, percentile: float = 0.9):
-
+    def __init__(self, loader: DataLoader, percentile: float = 0.9):
+        self.loader = loader
         self.percentile = percentile
 
         self._preprocess()
 
     def _preprocess(self):
-        movies_metadata_df = pd.read_csv('data/movies_metadata.csv')
-        movies_metadata_df.drop(
-            ['adult', 'belongs_to_collection', 'homepage', 'imdb_id', 'original_language', 'original_title', 'overview',
-             'poster_path', 'production_companies', 'production_countries', 'spoken_languages', 'status', 'tagline',
-             'video', 'budget', 'revenue'], axis=1, inplace=True
-        )
+        movies_metadata_df = self.loader.load_data()
 
         vote_counts = movies_metadata_df[movies_metadata_df['vote_count'].notnull()]['vote_count'].astype('int')
         vote_averages = movies_metadata_df[movies_metadata_df['vote_average'].notnull()]['vote_average'].astype('int')
@@ -64,13 +61,3 @@ class SimpleRecommender:
 
         """
         return self._preprocessed_data[['title', 'vote_count', 'vote_average', 'weighted_rating']].head(n)
-
-
-def main():
-    simple_recommender = SimpleRecommender()
-
-    print(simple_recommender.get_top_n_movies())
-
-
-if __name__ == '__main__':
-    main()
