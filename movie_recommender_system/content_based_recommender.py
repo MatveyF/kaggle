@@ -11,7 +11,13 @@ class ContentBasedRecommender:
     def __init__(self, loader: DataLoader):
         self.df: pd.DataFrame = loader.load_data()
 
-        tv_matrix = TfidfVectorizer(stop_words="english").fit_transform(self.df["overview"].dropna())  # by overview
+        self._preprocess()
+
+    def _preprocess(self):
+        self.df["tagline"] = self.df["tagline"].fillna('')
+        self.df["overview"] = self.df["overview"] + self.df["tagline"]
+
+        tv_matrix = TfidfVectorizer(stop_words="english").fit_transform(self.df["overview"].dropna())
         self.cosine_similarities = linear_kernel(tv_matrix, tv_matrix)
 
     def get_recommendations(self, title: str, n: int = 10):
@@ -45,7 +51,7 @@ def main():
     recommender = ContentBasedRecommender(
         loader=CSVDataLoader(path=Path("data/movies_metadata.csv"))
     )
-    print(recommender.get_recommendations("Shrek 2"))
+    print(recommender.get_recommendations("The Godfather", 25))
 
 
 if __name__ == '__main__':

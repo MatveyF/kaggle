@@ -15,7 +15,7 @@ def main():
         ),
         percentile=0.80,
     )
-    print(simple_recommender.get_top_n_movies(25))
+    print(simple_recommender.get_recommendations(25))
 
 
 if __name__ == '__main__':
