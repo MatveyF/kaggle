@@ -1,7 +1,7 @@
 # In this file I will implement a simple movie recommender system using the demographic filtering technique
 import pandas as pd
 
-from data_loader import DataLoader
+from .data_loader import DataLoader
 
 
 class SimpleRecommender:
@@ -50,7 +50,7 @@ class SimpleRecommender:
 
         return (v / (v + self.m) * R) + (self.m / (self.m + v) * self.C)
 
-    def get_top_n_movies(self, n: int = 10) -> pd.DataFrame:
+    def get_recommendations(self, n: int = 10) -> pd.DataFrame:
         """ Get the top n movies
 
         Args:
