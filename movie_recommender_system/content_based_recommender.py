@@ -16,6 +16,7 @@ class ContentBasedRecommender:
     def _preprocess(self):
         self.df["tagline"] = self.df["tagline"].fillna('')
         self.df["overview"] = self.df["overview"] + self.df["tagline"]
+        self.df["overview"] = self.df["overview"].fillna('')  # This is important because tfidf cannot handle NaNs
 
         tv_matrix = TfidfVectorizer(stop_words="english").fit_transform(self.df["overview"].dropna())
         self.cosine_similarities = linear_kernel(tv_matrix, tv_matrix)
@@ -31,16 +32,12 @@ class ContentBasedRecommender:
             pd.DataFrame: A dataframe with the top n movies
 
         """
-        # Get the index of the movie that matches the title
         idx = self.df[self.df['title'] == title].index[0]
 
-        # Get the pairwise similarity scores for all movies
+        # Get the pairwise similarity scores for all movies and sort them
         similarity_scores = list(enumerate(self.cosine_similarities[idx]))
-
-        # Sort movies based on similarity scores
         similarity_scores = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
 
-        # Get top n similar movies
         top_movies_indices = [i[0] for i in similarity_scores[1:n + 1]]
 
         return self.df['title'].iloc[top_movies_indices]
