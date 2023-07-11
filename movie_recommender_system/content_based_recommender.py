@@ -1,15 +1,22 @@
 from pathlib import Path
+from enum import Enum
 
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import linear_kernel
+from sklearn.metrics.pairwise import linear_kernel, euclidean_distances
 
 from data_loader import DataLoader, CSVDataLoader
 
 
+class SimilarityMetric(Enum):
+    COSINE = "cosine"
+    EUCLIDEAN = "euclidean"
+
+
 class ContentBasedRecommender:
-    def __init__(self, loader: DataLoader):
+    def __init__(self, loader: DataLoader, similarity_metric: SimilarityMetric = SimilarityMetric.COSINE):
         self.df: pd.DataFrame = loader.load_data()
+        self.similarity_metric = similarity_metric
 
         self._preprocess()
 
@@ -19,7 +26,13 @@ class ContentBasedRecommender:
         self.df["overview"] = self.df["overview"].fillna('')  # This is important because tfidf cannot handle NaNs
 
         tv_matrix = TfidfVectorizer(stop_words="english").fit_transform(self.df["overview"].dropna())
-        self.cosine_similarities = linear_kernel(tv_matrix, tv_matrix)
+
+        if self.similarity_metric == SimilarityMetric.COSINE:
+            self.similarities = linear_kernel(tv_matrix, tv_matrix)
+        elif self.similarity_metric == SimilarityMetric.EUCLIDEAN:
+            self.similarities = euclidean_distances(tv_matrix, tv_matrix)
+        else:
+            raise ValueError(f"Unknown similarity metric: {self.similarity_metric}")
 
     def get_recommendations(self, title: str, n: int = 10):
         """ Get the top n movies
@@ -35,7 +48,7 @@ class ContentBasedRecommender:
         idx = self.df[self.df['title'] == title].index[0]
 
         # Get the pairwise similarity scores for all movies and sort them
-        similarity_scores = list(enumerate(self.cosine_similarities[idx]))
+        similarity_scores = list(enumerate(self.similarities[idx]))
         similarity_scores = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
 
         top_movies_indices = [i[0] for i in similarity_scores[1:n + 1]]
@@ -46,7 +59,8 @@ class ContentBasedRecommender:
 def main():
 
     recommender = ContentBasedRecommender(
-        loader=CSVDataLoader(path=Path("data/movies_metadata.csv"))
+        loader=CSVDataLoader(path=Path("data/movies_metadata.csv")),
+        similarity_metric=SimilarityMetric.COSINE
     )
     print(recommender.get_recommendations("The Godfather", 25))
 
