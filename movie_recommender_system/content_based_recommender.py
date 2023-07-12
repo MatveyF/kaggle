@@ -2,7 +2,7 @@ from pathlib import Path
 from enum import Enum
 
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import linear_kernel, euclidean_distances
 
 from data_loader import DataLoader, CSVDataLoader
@@ -22,15 +22,21 @@ class ContentBasedRecommender:
 
     def _preprocess(self):
         self.df["tagline"] = self.df["tagline"].fillna('')
-        self.df["overview"] = self.df["overview"] + self.df["tagline"]
-        self.df["overview"] = self.df["overview"].fillna('')  # This is important because tfidf cannot handle NaNs
+        self.df["overview"] = self.df["overview"].fillna('')
 
-        tv_matrix = TfidfVectorizer(stop_words="english").fit_transform(self.df["overview"].dropna())
+        if "combined" in self.df.columns:
+            self.df["combined"] = self.df["combined"] + self.df["overview"] + self.df["tagline"]
+        else:
+            self.df["combined"] = self.df["overview"] + self.df["tagline"]
+
+        self.df["combined"] = self.df["combined"].fillna('')
+
+        cv_matrix = CountVectorizer(stop_words="english").fit_transform(self.df["combined"])
 
         if self.similarity_metric == SimilarityMetric.COSINE:
-            self.similarities = linear_kernel(tv_matrix, tv_matrix)
+            self.similarities = linear_kernel(cv_matrix, cv_matrix)
         elif self.similarity_metric == SimilarityMetric.EUCLIDEAN:
-            self.similarities = euclidean_distances(tv_matrix, tv_matrix)
+            self.similarities = euclidean_distances(cv_matrix, cv_matrix)
         else:
             raise ValueError(f"Unknown similarity metric: {self.similarity_metric}")
 
@@ -59,7 +65,7 @@ class ContentBasedRecommender:
 def main():
 
     recommender = ContentBasedRecommender(
-        loader=CSVDataLoader(path=Path("data/movies_metadata.csv")),
+        loader=CSVDataLoader(path=Path("data/processed.csv")),
         similarity_metric=SimilarityMetric.COSINE
     )
     print(recommender.get_recommendations("The Godfather", 25))
