@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import linear_kernel, euclidean_distances
 
-from data_loader import DataLoader, CSVDataLoader
+from .data_loader import DataLoader
 
 
 class SimilarityMetric(Enum):
@@ -60,16 +60,3 @@ class ContentBasedRecommender:
         top_movies_indices = [i[0] for i in similarity_scores[1:n + 1]]
 
         return self.df['title'].iloc[top_movies_indices]
-
-
-def main():
-
-    recommender = ContentBasedRecommender(
-        loader=CSVDataLoader(path=Path("data/processed.csv")),
-        similarity_metric=SimilarityMetric.COSINE
-    )
-    print(recommender.get_recommendations("The Godfather", 25))
-
-
-if __name__ == '__main__':
-    main()
