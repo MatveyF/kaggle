@@ -44,6 +44,16 @@ class Preprocessor:
         self.processed_data = self._preprocess()
 
     def save_to_csv(self, path: Path) -> None:
+        """Saves the preprocessed data to a CSV file.
+
+        Args:
+            path (Path): The path to the CSV file to save the data to
+
+        Raises:
+            ValueError: If preprocess method has not been called prior to calling this method
+        """
+        if self.processed_data is None:
+            raise ValueError("Preprocess the data before saving it to a CSV file.")
         self.processed_data.to_csv(path, index=False)
 
     def _preprocess(self) -> pd.DataFrame:
@@ -65,8 +75,8 @@ class Preprocessor:
         self.credits_df["id"] = self.credits_df["id"].astype(int)
         self.movies_metadata_df["id"] = self.movies_metadata_df["id"].astype(int)
 
-        combined = self.movies_metadata_df.merge(self.credits_df, on="id")
-        combined = combined.merge(self.keywords_df, on="id")
+        combined = self.movies_metadata_df.merge(self.credits_df, on="id", suffixes=('', '_credits'))
+        combined = combined.merge(self.keywords_df, on="id", suffixes=('', '_keywords'))
 
         for column in ["genres", "cast", "crew", "keywords"]:
             combined[column] = combined[column].apply(literal_eval)
