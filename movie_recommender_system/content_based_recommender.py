@@ -1,4 +1,3 @@
-from pathlib import Path
 from enum import Enum
 
 import pandas as pd
@@ -40,7 +39,7 @@ class ContentBasedRecommender:
         else:
             raise ValueError(f"Unknown similarity metric: {self.similarity_metric}")
 
-    def get_recommendations(self, title: str, n: int = 10):
+    def get_recommendations(self, title: str, n: int = 10) -> pd.DataFrame:
         """ Get the top n movies
 
         Args:

@@ -1,6 +1,6 @@
-from data_loader import PostgresDataLoader
-from simple_recommender import SimpleRecommender
-from config import DATABASE_CONFIG
+from movie_recommender_system.data_loader import PostgresDataLoader
+from movie_recommender_system.simple_recommender import SimpleRecommender
+from movie_recommender_system.config import DATABASE_CONFIG
 
 
 def main():
