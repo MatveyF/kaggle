@@ -79,14 +79,14 @@ class Preprocessor:
                 self.imputers[col] = KNNImputer(n_neighbors=5)
 
             if col in self.imputers:
-                self.imputers[col].fit(data[col])
+                self.imputers[col].fit(data[[col]])
 
             if col in self.scalers:
-                self.scalers[col].fit(data[col])
+                self.scalers[col].fit(data[[col]])
 
         for col in self._categorical_feature_names:
             if col in self.encoders:
-                self.encoders[col].fit(data[col])
+                self.encoders[col].fit(data[[col]])
 
         self.is_fitted = True
 
@@ -105,14 +105,14 @@ class Preprocessor:
         for col in self._numerical_feature_names:
             if col in data.columns:
                 if col in self.imputers:
-                    data[col] = self.imputers[col].transform(data[col])
+                    data[col] = self.imputers[col].transform(data[[col]])
 
                 if col in self.scalers:
-                    data[col] = self.scalers[col].transform(data[col])
+                    data[col] = self.scalers[col].transform(data[[col]])
 
         for col in self._categorical_feature_names:
             if col in self.encoders and col in data.columns:
-                data[col] = self.encoders[col].transform(data[col])
+                data[col] = self.encoders[col].transform(data[[col]])
 
         return data
 
