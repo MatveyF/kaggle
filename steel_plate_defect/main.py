@@ -1,24 +1,28 @@
 from pathlib import Path
 import argparse
 
-import pandas as pd
 from catboost import CatBoostClassifier
 
 from data_loader import CSVDataLoader
 from preprocess import Preprocessor
 from pipeline import Pipeline
+from optimisation import Optimiser
 
 
-SUBMISSION_FILE = 'submission.csv'
+SUBMISSION_FILE = "submission.csv"
 
 
 def main(input_path: Path, output_path: Path):
 
-    loader = CSVDataLoader(path=input_path)
-    model = CatBoostClassifier()
-    preprocessor = Preprocessor({}, {}, {})
+    model = CatBoostClassifier
 
-    pipeline = Pipeline(model=model, preprocessor=preprocessor, data_loader=loader, output_path=output_path)
+    loader = CSVDataLoader(path=input_path)
+    preprocessor = Preprocessor({}, {}, {})
+    optimiser = Optimiser(model=model)
+
+    pipeline = Pipeline(
+        model=model, preprocessor=preprocessor, data_loader=loader, output_path=output_path, optimiser=optimiser
+    )
 
     pipeline.run()
 
