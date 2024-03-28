@@ -80,11 +80,6 @@ class Preprocessor:
 
         data.drop(self._to_drop, axis=1, inplace=True)
 
-        # remove target columns if present
-        for col in self._target_col_names:
-            if col in data.columns:
-                data.drop(col, axis=1, inplace=True)
-
         for col in self._numerical_feature_names:
             if col in data.columns:
                 if col in self.imputers:
