@@ -23,11 +23,21 @@ class Preprocessor:
         encoders:
             A dictionary of encoders for categorical features.
             The keys are the names of the categorical features and the values are the encoders.
+        feature_engineering:
+            Whether to apply feature engineering to the data.
+            Default is False.
     """
-    def __init__(self, scalers: dict[str, Any], imputers: dict[str, Any], encoders: dict[str, Any]):
+    def __init__(
+        self,
+        scalers: dict[str, Any],
+        imputers: dict[str, Any],
+        encoders: dict[str, Any],
+        feature_engineering: bool = False,
+    ):
         self.scalers = scalers
         self.imputers = imputers
         self.encoders = encoders
+        self.feature_engineering = feature_engineering
 
         self._to_drop: list[str] = ["id"]  # literally row number
 
@@ -48,6 +58,15 @@ class Preprocessor:
         ]
 
         self._is_fitted: bool = False
+
+    @staticmethod
+    def _feature_engineering(data: pd.DataFrame) -> pd.DataFrame:
+        data["X_range"] = data["X_Maximum"] - data["X_Minimum"]
+        data["Y_range"] = data["Y_Maximum"] - data["Y_Minimum"]
+
+        data.drop(["X_Minimum", "X_Maximum", "Y_Minimum", "Y_Maximum"], axis=1, inplace=True)
+
+        return data
 
     def fit(self, data: pd.DataFrame) -> None:
 
@@ -79,6 +98,9 @@ class Preprocessor:
             raise NotFittedError(message)
 
         data.drop(self._to_drop, axis=1, inplace=True)
+
+        if self.feature_engineering:
+            data = self._feature_engineering(data)
 
         for col in self._numerical_feature_names:
             if col in data.columns:
