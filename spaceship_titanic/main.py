@@ -1,7 +1,7 @@
 # Imports
 import argparse
 from pathlib import Path
-from typing import Any
+from typing import Any 
 
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder

@@ -1,14 +1,26 @@
-from typing import Protocol
+from enum import Enum
 
-import pandas as pd
+from pydantic import BaseModel, model_validator
 
 
-class Model(Protocol):
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
-        ...
+class ParameterType(str, Enum):
+    INTEGER = "integer"
+    FLOAT = "float"
+    CATEGORICAL = "categorical"
 
-    def predict_proba(self, X: pd.DataFrame) -> pd.Series:
-        ...
+
+class Parameter(BaseModel):
+    name: str
+    type: ParameterType
+    space: list[int | float | str]
+
+    @model_validator(mode="after")
+    def check_space_length(self):
+        if self.type == ParameterType.INTEGER:
+            if not all(isinstance(value, int) for value in self.space):
+                raise ValueError("Parameter space must contain only integers.")
+
+        return self
 
 
 class NotFittedError(Exception):

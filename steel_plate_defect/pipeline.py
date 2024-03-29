@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 import logging
 
 import pandas as pd
@@ -7,7 +8,6 @@ from catboost import CatBoostClassifier
 from data_loader import DataLoader
 from preprocess import Preprocessor
 from optimisation import Optimiser
-from utils import Model
 
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,10 @@ class Pipeline:
             An instance of the DataLoader class.
         preprocessor (Preprocessor):
             An instance of the Preprocessor class.
-        model (Model):
-            ML model.
+        model (Callable):
+            The model to use for training and prediction.
+        optimiser (Optimiser):
+            An instance of the Optimiser class.
         output_path (Path):
             The path to save the submissions.
     """
@@ -31,13 +33,13 @@ class Pipeline:
         self,
         data_loader: DataLoader,
         preprocessor: Preprocessor,
-        model: Model,
+        model: Callable,
         optimiser: Optimiser,
         output_path: Path = Path("submission.csv"),
     ):
         self.data_loader = data_loader
         self.preprocessor = preprocessor
-        self.model = model or CatBoostClassifier(iterations=2500)
+        self.model = model or CatBoostClassifier
         self.optimiser = optimiser
         self.output_path = output_path
 
