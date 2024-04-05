@@ -66,8 +66,8 @@ class Pipeline:
 
         results = pd.DataFrame({"id": test_id})
 
-        logger.info("Fitting the model...")
         for target_col in self._target_col_names:
+            logger.info(f"Fitting the model for target column: {target_col}")
             self.optimiser.fit(X_train, y_train[target_col])
             optimised_model = self.model(**self.optimiser.best_params)
             optimised_model.fit(X_train, y_train[target_col])

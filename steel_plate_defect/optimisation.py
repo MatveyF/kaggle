@@ -13,7 +13,13 @@ logger = getLogger(__name__)
 
 
 class Optimiser:
-    def __init__(self, model: Callable, parameters: list[Parameter], n_trials: int = 5000, random_state: int = 42):
+    def __init__(
+        self,
+        model: Callable,
+        parameters: list[Parameter],
+        n_trials: int | None = None,
+        random_state: int = 42,
+    ):
         self.model = model
         self.parameters = parameters
         self.n_trials = n_trials
